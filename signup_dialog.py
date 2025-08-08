@@ -1,11 +1,12 @@
 # signup_dialog.py
 from dotenv import load_dotenv
 import os
-
 load_dotenv()  # .env 파일의 키/값을 os.environ에 로드
 
 client_id = os.getenv("KAKAO_REST_API_KEY")
+rest_api_key = os.getenv("KAKAO_REST_API_KEY")
 redirect_uri = os.getenv("KAKAO_REDIRECT_URI")
+client_secret = os.getenv("KAKAO_CLIENT_SECRET")
 
 import requests
 
@@ -34,9 +35,13 @@ class KakaoSignupDialog(QDialog):
 
         # 환경 변수에서 REST API 키와 리다이렉트 URI 로드
         self.client_id = os.getenv("KAKAO_REST_API_KEY")
+        self.rest_api_key  = os.getenv("KAKAO_REST_API_KEY")
         self.redirect_uri = os.getenv("KAKAO_REDIRECT_URI")
-        print(self.client_id)# = os.getenv("KAKAO_REST_API_KEY")
-        print(self.redirect_uri)# = os.getenv("KAKAO_REDIRECT_URI")
+        self.client_secret = os.getenv("KAKAO_CLIENT_SECRET")
+        print("client_id>>",self.client_id)# = os.getenv("KAKAO_REST_API_KEY")
+        print("rest_api_key>>",self.rest_api_key)# = os.getenv("KAKAO_REST_API_KEY")
+        print("redirect_uri>>",self.redirect_uri)# = os.getenv("KAKAO_REDIRECT_URI")
+        print("client_secret>>",self.client_secret)# = os.getenv("KAKAO_REDIRECT_URI")
 
 
         if not self.client_id or not self.redirect_uri:
@@ -55,6 +60,8 @@ class KakaoSignupDialog(QDialog):
             f"?response_type=code&client_id={self.client_id}"
             f"&redirect_uri={self.redirect_uri}"
         )
+
+        print(oauth_url)
 
         # WebEngineView에 인가 페이지 로드
         self.webview = QWebEngineView(self)
@@ -75,6 +82,7 @@ class KakaoSignupDialog(QDialog):
         # URL에서 쿼리 파라미터 파싱
         query_items = dict(item.split('=', 1) for item in url.query().split('&') if '=' in item)
         code = query_items.get("code")
+        print("code:::", code)
         if not code:
             QMessageBox.warning(self, "인증 실패", "인가 코드가 전달되지 않았습니다.")
             self.reject()
@@ -110,21 +118,27 @@ class KakaoSignupDialog(QDialog):
             "grant_type": "authorization_code",
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
+            "client_secret": self.client_secret,
             "code": code
         }
         try:
+
             resp = requests.post(token_url, data=data)
+            print("resp::",resp.text)
+            print(resp.raise_for_status())
             resp.raise_for_status()
-            return resp.json().get("access_token")
+            r = resp.json().get("access_token")
+            return r
         except Exception as e:
             print("토큰 요청 에러:", e)
             return None
 
     def _request_user_info(self, token: str) -> dict | None:
+        print("token===", token)
         """
         Access Token으로 카카오 사용자 정보를 조회합니다.
         """
-        profile_url = "https://kapi.kakao.com/v1/user/me"
+        profile_url = "https://kapi.kakao.com/v2/user/me"
         headers = {"Authorization": f"Bearer {token}"}
         try:
             resp = requests.get(profile_url, headers=headers)
